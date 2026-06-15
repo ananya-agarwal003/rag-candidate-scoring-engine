@@ -46,7 +46,9 @@ def score_resume(resume_text: str, job_description: str) -> dict:
     vectorstore = build_vectorstore(resume_text)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
     relevant_chunks = retriever.invoke(job_description)
-    context = "\n".join([chunk.page_content for chunk in relevant_chunks])
+    if not relevant_chunks:
+         return {"result": "Score: 0/100\nReasons:\n- Resume content is not relevant to the job description."}
+    context = "\n".join([f"[Chunk {i+1}]: {chunk.page_content}" for i, chunk in enumerate(relevant_chunks)])
 
     prompt = ChatPromptTemplate.from_template(
         """You are an expert technical recruiter.
