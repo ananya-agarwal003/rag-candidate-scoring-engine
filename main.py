@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List
 import shutil
 import os
 
@@ -22,16 +23,24 @@ def home():
 
 @app.post("/score")
 async def score(resume: UploadFile, job_description: str = Form(...)):
-    # Save uploaded resume temporarily
     temp_path = f"temp_{resume.filename}"
     with open(temp_path, "wb") as f:
         shutil.copyfileobj(resume.file, f)
-
-    # Extract text and run scoring
     resume_text = extract_text_from_pdf(temp_path)
     result = score_resume(resume_text, job_description)
-
-    # Clean up temp file
     os.remove(temp_path)
-
     return result
+
+
+@app.post("/rank")
+async def rank_resumes(resumes: List[UploadFile], job_description: str = Form(...)):
+    results = []
+    for resume in resumes:
+        temp_path = f"temp_{resume.filename}"
+        with open(temp_path, "wb") as f:
+            shutil.copyfileobj(resume.file, f)
+        resume_text = extract_text_from_pdf(temp_path)
+        result = score_resume(resume_text, job_description)
+        results.append({"filename": resume.filename, "result": result["result"]})
+        os.remove(temp_path)
+    return {"rankings": sorted(results, key=lambda x: x["result"], reverse=True)}
