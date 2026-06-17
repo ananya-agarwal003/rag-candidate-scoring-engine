@@ -9,18 +9,15 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 
 load_dotenv()
 
-# Load the LLM (Groq - free and fast)
 llm = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY"),
     model="llama-3.1-8b-instant"
 )
 
-# Load embedding model (runs locally, free, no API needed)
 embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """Reads a PDF file and returns its text content."""
     reader = PdfReader(pdf_path)
     text = ""
     for page in reader.pages:
@@ -29,7 +26,6 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 
 def build_vectorstore(resume_text: str):
-    """Splits resume text into chunks and creates a FAISS vector store."""
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     chunks = splitter.split_text(resume_text)
     vectorstore = FAISS.from_texts(chunks, embeddings)
@@ -37,23 +33,25 @@ def build_vectorstore(resume_text: str):
 
 
 def score_resume(resume_text: str, job_description: str) -> dict:
-    """
-    Main RAG function:
-    1. Builds a vector store from resume text
-    2. Retrieves relevant chunks based on job description
-    3. Asks the LLM to score and explain the match
-    """
     vectorstore = build_vectorstore(resume_text)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
     relevant_chunks = retriever.invoke(job_description)
+
     if not relevant_chunks:
-         return {"result": "Score: 0/100\nReasons:\n- Resume content is not relevant to the job description."}
+        return {"result": "Score: 0/100\nReasons:\n- Resume content is not relevant to the job description."}
+
     context = "\n".join([f"[Chunk {i+1}]: {chunk.page_content}" for i, chunk in enumerate(relevant_chunks)])
 
     prompt = ChatPromptTemplate.from_template(
         """You are an expert technical recruiter.
-        Compare the candidate's resume content with the job description.
-        Give a match score out of 100, and explain in 3-4 bullet points why.
+        Analyze the resume against the job description and provide:
+
+        1. Overall Score: X/100
+        2. Category Breakdown:
+           - Skills Match: X/100
+           - Experience Match: X/100
+           - Education Match: X/100
+        3. Reasons (3 bullet points)
 
         Job Description:
         {job_description}
@@ -61,12 +59,7 @@ def score_resume(resume_text: str, job_description: str) -> dict:
         Relevant Resume Content:
         {context}
 
-        Respond in this exact format:
-        Score: <number>/100
-        Reasons:
-        - point 1
-        - point 2
-        - point 3
+        Follow this exact format in your response.
         """
     )
 
