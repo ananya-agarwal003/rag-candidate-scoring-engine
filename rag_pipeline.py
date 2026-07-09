@@ -5,7 +5,7 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import FastEmbedEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 load_dotenv()
 
@@ -14,7 +14,7 @@ llm = ChatGroq(
     model="llama-3.1-8b-instant"
 )
 
-embeddings = FastEmbedEmbeddings()
+embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
